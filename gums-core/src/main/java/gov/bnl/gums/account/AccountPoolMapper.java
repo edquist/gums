@@ -98,6 +98,13 @@ public class AccountPoolMapper extends AccountMapper {
         return getDB().retrieveAccountInfo();
     }
 
+	// helper class for getAssignments()
+	class AccountRootStats {
+		public int total = 0;
+		public int assigned = 0;
+		public ArrayList<String> numbers = new ArrayList<String>();
+	}
+
 	// Comparator class to sort 700-799,7000-7999, instead of purely ascii order
 	class LenComp implements Comparator<String> {
 		@Override
@@ -117,30 +124,28 @@ public class AccountPoolMapper extends AccountMapper {
 			String retStr = new String();
 
 			Map accountReverseMap = getDB().retrieveReverseAccountMap();
-			TreeMap accountRoots = new TreeMap();
+			TreeMap<String, AccountRootStats> accountRoots = new TreeMap<String, AccountRootStats>();
 			Iterator it = accountReverseMap.keySet().iterator();
 			while (it.hasNext()) {
 				String account = (String)it.next();
 				String accountRoot = getRoot(account);
 				String accountNumber = getNumber(account);
-				Object[] stats = (Object[])accountRoots.get(accountRoot);
+				AccountRootStats stats = accountRoots.get(accountRoot);
 				if (stats==null) {
-					stats = new Object[3];
-					stats[0] = new Integer(0); // total
-					stats[1] = new Integer(0); // assigned
-					stats[2] = new ArrayList(); // number list
+					stats = new AccountRootStats();
 				}
-				stats[0] = new Integer(((Integer)stats[0]).intValue() + 1); // total
+				stats.total += 1;
 				if (!accountReverseMap.get(account).equals(""))
-					stats[1] = new Integer(((Integer)stats[1]).intValue() + 1); // assigned
-				((ArrayList)stats[2]).add(accountNumber); // number list
+					stats.assigned += 1;
+				stats.numbers.add(accountNumber); // number list
 				accountRoots.put(accountRoot, stats);
 			}
 			it = accountRoots.keySet().iterator();
 			while (it.hasNext()) {
 				String accountRoot = (String)it.next();
 				retStr += accountRoot;
-				List numbers = (ArrayList)((Object[])accountRoots.get(accountRoot))[2];
+				AccountRootStats stats = accountRoots.get(accountRoot);
+				List numbers = stats.numbers;
 				Collections.sort(numbers, new LenComp());
 				Iterator numIt = numbers.iterator();
 				String lastNumber = null;
@@ -155,8 +160,8 @@ public class AccountPoolMapper extends AccountMapper {
 					lastNumber = number;
 				}
 				retStr += "(" +
-					((Object[])accountRoots.get(accountRoot))[1] + "/" +
-					((Object[])accountRoots.get(accountRoot))[0] + ")";
+					stats.assigned + "/" +
+					stats.total + ")";
 				if (it.hasNext())
 					retStr += ", ";
 			}
