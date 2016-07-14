@@ -13,6 +13,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.Comparator;
 
 import org.apache.log4j.Logger;
 
@@ -97,6 +98,15 @@ public class AccountPoolMapper extends AccountMapper {
         return getDB().retrieveAccountInfo();
     }
 
+	// Comparator class to sort 700-799,7000-7999, instead of purely ascii order
+	class LenComp implements Comparator<String> {
+		@Override
+		public int compare(String a, String b) {
+			int lcomp = a.length() - b.length();
+			return lcomp != 0 ? lcomp : a.compareTo(b);
+		}
+	}
+
 	/**
 	 * @return String representation of how many accounts are assigned in database for each root account
 	 */
@@ -131,7 +141,7 @@ public class AccountPoolMapper extends AccountMapper {
 				String accountRoot = (String)it.next();
 				retStr += accountRoot;
 				List numbers = (ArrayList)((Object[])accountRoots.get(accountRoot))[2];
-				Collections.sort(numbers);
+				Collections.sort(numbers, new LenComp());
 				Iterator numIt = numbers.iterator();
 				String lastNumber = null;
 				while(numIt.hasNext()) {
