@@ -1,0 +1,97 @@
+#!/usr/bin/python
+
+import os
+import pwd
+import sys
+import json
+import optparse
+
+# curl example:
+# curl --capath /etc/grid-security/certificates/ --cert /etc/grid-security/hostcert.pem --key /etc/grid-security/hostkey.pem 'https://fermicloud331.fnal.gov:8443/gums/json/getOsgVoUserMap?hostname=test.cs.wisc.edu'
+
+def get_json_map(opts):
+    jsonpath = "/gums/json/getOsgVoUserMap"
+    opts = dict(opts, jsonpath=jsonpath)
+    p = os.popen("curl --capath {capath} --cert {certpath} --key {keypath} "
+                 "-sS '{gumshost}{jsonpath}?hostname={targethost}'"
+                 .format(**opts))
+    return json.load(p)
+
+_valid_users = set()
+def user_exists(user):
+    if user in _valid_users:
+        return True
+    try:
+        pwd.getpwnam(user)
+        _valid_users.add(user)
+        return True
+    except KeyError:
+        return False
+
+def get_supported_vos(vo_users):
+    def any_vo_user_exists(vo):
+        return any( user_exists(user) for user in vo_users[vo] )
+
+    return sorted(filter(any_vo_user_exists, vo_users))
+
+
+def parse_opts():
+    # defaults
+    default_capath   = "/etc/grid-security/certificates/"
+    default_certpath = "/etc/grid-security/hostcert.pem"
+    default_keypath  = "/etc/grid-security/hostkey.pem"
+
+    parser = optparse.OptionParser(usage="%prog [options] gumshost targethost")
+    parser.add_option("--capath", help="Path to certificates directory; "
+        "defaults to " + default_capath, dest="capath",
+        default=default_capath)
+    parser.add_option("--cert", help="Path to user/hostcert file; "
+        "defaults to " + default_certpath, dest="certpath",
+        default=default_certpath)
+    parser.add_option("--key", help="Path to user/hostkey file; "
+        "defaults to " + default_keypath, dest="keypath",
+        default=default_keypath)
+
+    opts, args = parser.parse_args()
+
+    if len(args) != 2:
+         raise Exception("must specify gumshost and targethost")
+    gumshost, targethost = args
+    opts = dict(vars(opts), gumshost=gumshost, targethost=targethost)
+    return opts
+
+
+def main():
+    opts = parse_opts()
+    json_map = get_json_map(opts)
+
+    print json_map
+
+    if 'result' not in json_map or json_map['result'] != 'OK':
+        print >>sys.stderr, "Fail (%s):" % json_map.get('result')
+        if 'message' in json_map:
+            print >>sys.stderr, json_map['message']
+        sys.exit(1)
+
+    if 'map' not in json_map:
+        print >>sys.stderr, "Missing 'map' object..."
+        sys.exit(1)
+
+    vo_users = json_map['map']
+
+    if type(vo_users) is not dict:
+        print >>sys.stderr, "'map' object not of type dict..."
+        print >>sys.stderr, "(type was: %s)" % type(vo_users)
+        sys.exit(1)
+
+    supported_vos = get_supported_vos(vo_users)
+    if supported_vos:
+        print "Supported VOs on this server:"
+        for vo in supported_vos:
+            print "  " + vo
+    else:
+        print "No supported VOs on this server."
+
+if __name__ == '__main__':
+    main()
+
