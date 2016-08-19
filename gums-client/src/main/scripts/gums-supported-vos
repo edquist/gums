@@ -6,6 +6,8 @@ import sys
 import json
 import optparse
 
+_debug = False
+
 # curl example:
 # curl --capath /etc/grid-security/certificates/ --cert /etc/grid-security/hostcert.pem --key /etc/grid-security/hostkey.pem 'https://fermicloud331.fnal.gov:8443/gums/json/getOsgVoUserMap?hostname=test.cs.wisc.edu'
 
@@ -63,7 +65,8 @@ def parse_opts():
 def get_json_vo_user_map(opts):
     json_map = get_json_map(opts)
 
-    print json_map
+    if _debug:
+        print json_map
 
     if 'result' not in json_map or json_map['result'] != 'OK':
         print >>sys.stderr, "Fail (%s):" % json_map.get('result')
