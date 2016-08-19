@@ -4,20 +4,48 @@ import os
 import pwd
 import sys
 import json
+import urllib
+import httplib
+import urllib2
 import optparse
 
 _debug = False
 
+# defaults
+default_capath   = "/etc/grid-security/certificates/"
+default_certpath = "/etc/grid-security/hostcert.pem"
+default_keypath  = "/etc/grid-security/hostkey.pem"
+
 # curl example:
 # curl --capath /etc/grid-security/certificates/ --cert /etc/grid-security/hostcert.pem --key /etc/grid-security/hostkey.pem 'https://fermicloud331.fnal.gov:8443/gums/json/getOsgVoUserMap?hostname=test.cs.wisc.edu'
 
+# see: http://stackoverflow.com/questions/1875052/using-paired-certificates-with-urllib2
+class HTTPSClientAuthHandler(urllib2.HTTPSHandler):
+    def __init__(self, certpath, keypath):
+        urllib2.HTTPSHandler.__init__(self)
+        self.certpath = certpath
+        self.keypath = keypath
+
+    def https_open(self, req):
+        return self.do_open(self.get_connection, req)
+
+    # wrapper for HTTPSConnection constructor with cert files
+    def get_connection(self, host, timeout=60):
+        return httplib.HTTPSConnection(host, key_file=self.keypath,
+                                             cert_file=self.certpath,
+                                             timeout=timeout)
+
+def certurlopen(url, certpath, keypath):
+    handler = HTTPSClientAuthHandler(certpath, keypath)
+    opener  = urllib2.build_opener(handler)
+    return opener.open(url)
+
 def get_json_map(opts):
     jsonpath = "/gums/json/getOsgVoUserMap"
-    opts = dict(opts, jsonpath=jsonpath)
-    p = os.popen("curl --capath {capath} --cert {certpath} --key {keypath} "
-                 "-sS '{gumshost}{jsonpath}?hostname={targethost}'"
-                 .format(**opts))
-    return json.load(p)
+    params = urllib.urlencode({'hostname': opts['targethost']})
+    url = '%s%s?%s' % (opts['gumshost'], jsonpath, params)
+    handle = certurlopen(url, opts['certpath'], opts['keypath'])
+    return json.load(handle)
 
 _valid_users = set()
 def user_exists(user):
@@ -36,13 +64,7 @@ def supported_vos_for_vo_users(vo_users):
 
     return sorted(filter(any_vo_user_exists, vo_users))
 
-
 def parse_opts():
-    # defaults
-    default_capath   = "/etc/grid-security/certificates/"
-    default_certpath = "/etc/grid-security/hostcert.pem"
-    default_keypath  = "/etc/grid-security/hostkey.pem"
-
     parser = optparse.OptionParser(usage="%prog [options] gumshost targethost")
     parser.add_option("--capath", help="Path to certificates directory; "
         "defaults to " + default_capath, dest="capath",
