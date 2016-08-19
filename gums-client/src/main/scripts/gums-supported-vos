@@ -28,7 +28,7 @@ def user_exists(user):
     except KeyError:
         return False
 
-def get_supported_vos(vo_users):
+def supported_vos_for_vo_users(vo_users):
     def any_vo_user_exists(vo):
         return any( user_exists(user) for user in vo_users[vo] )
 
@@ -84,12 +84,14 @@ def get_json_vo_user_map(opts):
 
     return vo_users
 
+def get_supported_vos(opts):
+    vo_users = get_json_vo_user_map(opts)
+    return supported_vos_for_vo_users(vo_users)
+
 def main():
     opts = parse_opts()
 
-    vo_users = get_json_vo_user_map(opts)
-
-    supported_vos = get_supported_vos(vo_users)
+    supported_vos = get_supported_vos(opts)
     if supported_vos:
         print "Supported VOs on this server:"
         for vo in supported_vos:
