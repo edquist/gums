@@ -60,9 +60,7 @@ def parse_opts():
     opts = dict(vars(opts), gumshost=gumshost, targethost=targethost)
     return opts
 
-
-def main():
-    opts = parse_opts()
+def get_json_vo_user_map(opts):
     json_map = get_json_map(opts)
 
     print json_map
@@ -83,6 +81,13 @@ def main():
         print >>sys.stderr, "'map' object not of type dict..."
         print >>sys.stderr, "(type was: %s)" % type(vo_users)
         sys.exit(1)
+
+    return vo_users
+
+def main():
+    opts = parse_opts()
+
+    vo_users = get_json_vo_user_map(opts)
 
     supported_vos = get_supported_vos(vo_users)
     if supported_vos:
