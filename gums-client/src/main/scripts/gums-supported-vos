@@ -2,7 +2,6 @@
 
 import os
 import pwd
-import sys
 import json
 import urllib
 import httplib
@@ -90,22 +89,18 @@ def get_json_vo_user_map(opts):
     if _debug:
         print json_map
 
-    if 'result' not in json_map or json_map['result'] != 'OK':
-        print >>sys.stderr, "Fail (%s):" % json_map.get('result')
-        if 'message' in json_map:
-            print >>sys.stderr, json_map['message']
-        sys.exit(1)
-
+    if 'result' not in json_map:
+        raise Exception("'result' not in returned json")
+    if json_map['result'] != 'OK':
+        raise Exception("%s: %s" % (json_map.get('result', "Fail"),
+                                    json_map.get('message', "(no message)")))
     if 'map' not in json_map:
-        print >>sys.stderr, "Missing 'map' object..."
-        sys.exit(1)
+        raise Exception("Missing 'map' object")
 
     vo_users = json_map['map']
 
     if type(vo_users) is not dict:
-        print >>sys.stderr, "'map' object not of type dict..."
-        print >>sys.stderr, "(type was: %s)" % type(vo_users)
-        sys.exit(1)
+        raise Exception("'map' object not of type dict")
 
     return vo_users
 
