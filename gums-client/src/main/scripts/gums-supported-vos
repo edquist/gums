@@ -43,7 +43,7 @@ def certurlopen(url, certpath, keypath):
 def get_json_map(gumshost, targethost, certpath, keypath):
     jsonpath = "/gums/json/getOsgVoUserMap"
     params = urllib.urlencode({'hostname': targethost})
-    url = 'http://%s%s?%s' % (gumshost, jsonpath, params)
+    url = 'https://%s%s?%s' % (gumshost, jsonpath, params)
     handle = certurlopen(url, certpath, keypath)
     return json.load(handle)
 
@@ -89,7 +89,7 @@ def parse_opts():
     opts = dict(vars(opts), gumshost=gumshost, targethost=targethost)
     return opts
 
-def get_json_vo_user_map(gumshost, targethost, certpath=default_capath,
+def get_json_vo_user_map(gumshost, targethost, certpath=default_certpath,
                                                keypath=default_keypath):
     json_map = get_json_map(gumshost, targethost, certpath, keypath)
 
@@ -111,7 +111,7 @@ def get_json_vo_user_map(gumshost, targethost, certpath=default_capath,
 
     return vo_users
 
-def get_supported_vos(gumshost, targethost, certpath=default_capath,
+def get_supported_vos(gumshost, targethost, certpath=default_certpath,
                                             keypath=default_keypath):
     vo_users = get_json_vo_user_map(gumshost, targethost, certpath, keypath)
     return supported_vos_for_vo_users(vo_users)
