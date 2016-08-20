@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 import os
+import re
 import pwd
 import json
 import urllib
@@ -39,11 +40,11 @@ def certurlopen(url, certpath, keypath):
     opener  = urllib2.build_opener(handler)
     return opener.open(url)
 
-def get_json_map(opts):
+def get_json_map(gumshost, targethost, certpath, keypath):
     jsonpath = "/gums/json/getOsgVoUserMap"
-    params = urllib.urlencode({'hostname': opts['targethost']})
-    url = '%s%s?%s' % (opts['gumshost'], jsonpath, params)
-    handle = certurlopen(url, opts['certpath'], opts['keypath'])
+    params = urllib.urlencode({'hostname': targethost})
+    url = 'http://%s%s?%s' % (gumshost, jsonpath, params)
+    handle = certurlopen(url, certpath, keypath)
     return json.load(handle)
 
 _valid_users = set()
@@ -80,11 +81,17 @@ def parse_opts():
     if len(args) != 2:
          raise Exception("must specify gumshost and targethost")
     gumshost, targethost = args
+    m = re.search(r'^(?:https://)?([^:]+)(?::(\d+))?$', gumshost)
+    if m is None:
+        raise Exception("Bad gums host: '%s'" % gumshost)
+    host, port = m.groups()
+    gumshost = "%s:%s" % (host, (port or 8443))
     opts = dict(vars(opts), gumshost=gumshost, targethost=targethost)
     return opts
 
-def get_json_vo_user_map(opts):
-    json_map = get_json_map(opts)
+def get_json_vo_user_map(gumshost, targethost, certpath=default_capath,
+                                               keypath=default_keypath):
+    json_map = get_json_map(gumshost, targethost, certpath, keypath)
 
     if _debug:
         print json_map
@@ -104,14 +111,15 @@ def get_json_vo_user_map(opts):
 
     return vo_users
 
-def get_supported_vos(opts):
-    vo_users = get_json_vo_user_map(opts)
+def get_supported_vos(gumshost, targethost, certpath=default_capath,
+                                            keypath=default_keypath):
+    vo_users = get_json_vo_user_map(gumshost, targethost, certpath, keypath)
     return supported_vos_for_vo_users(vo_users)
 
 def main():
     opts = parse_opts()
 
-    supported_vos = get_supported_vos(opts)
+    supported_vos = get_supported_vos(**opts)
     if supported_vos:
         print "Supported VOs on this server:"
         for vo in supported_vos:
